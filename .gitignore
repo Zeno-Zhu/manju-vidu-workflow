@@ -1,0 +1,31 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# ---- 运行期产物（本 skill 不在仓库里存这些）----
+# 账号 profile / 实例状态 / 日志都落在 ~/.manju-vidu/，不在仓库内；
+# 这里只兜住有人误在仓库里跑出来的东西：
+.manju-vidu/
+*.log
+_出片记录/
+00_剧本与提示词/
+01_资产库/
+02_分集工程/
+03_临时/
+04_最终交付/
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ---- 本地私有适配（每个人自己的，不该进仓库）----
+user-adapters/
+*.local.md
