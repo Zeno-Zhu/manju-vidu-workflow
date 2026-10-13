@@ -346,6 +346,7 @@ node   scripts/vidu_shortcuts.py --account-index 1   # 桌面「Vidu 账号1 - �
 | **`整理资产`** | 客户目录归位（`scripts/organize_assets.py`，**先出方案**，确认后 `--apply`） |
 | **`只上传 <提示词文件>`** | 走 §5.7 **仅上传模式**：客户自有提示词原样提交，只帮挂资产 |
 | **`开账号N`** / `关账号N` | 起/关第 N 个账号实例（§5.9）；`账号列表` 看全部 |
+| **`查额度`** | 看今日闲时用量（`vidu_api.py quota`）—— 显示 `已用/上限/剩余` |
 | `状态` | 汇报走到哪一步、已提交/已生成/已下载各多少 |
 
 ---
@@ -402,6 +403,7 @@ node   scripts/vidu_shortcuts.py --account-index 1   # 桌面「Vidu 账号1 - �
 | 提交成功但不知对应哪组 | 靠提示词里的 `分镜组ID：` 锚点对台账 |
 | 一组都下不下来 | 台账**必须翻页**（`pager.pagesz=100&pager.page=N`）；老剧在第 2 页往后 |
 | 音频上传报 CORS | `metadata` 字段名写错（必须 `{"duration": …}`）⇒ 见 `vidu-平台机制.md §9.1b` |
+| **额度用完 / 跑到一半停了** | ★ 门禁会**主动停**（退出码 2）并提示换账号或等明天；换完账号重跑 **`vidu_queue.py run`**（有状态、自动跳过已完成）；⛔ 别用 `vidu_api.py run` 续跑（无状态会重复提交） |
 | 闲时不生效 | `schedule_mode` 只能是 `nopeak`（闲时）或 `normal`（计分）—— 不是 `off_peak` |
 | **下到带水印的片子** | ★ 只有 `uri`（水印版）时**别退** —— 那是中间态，`download_uri` 稍后才挂（§5.8） |
 | 出图不出图 | 出图**也是 task**：查询要带 `types=text2image`；`settings.duration` 必须为 **0** |

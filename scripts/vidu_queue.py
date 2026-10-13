@@ -76,7 +76,61 @@ def platform_state(port=9222):
     d = call({"op": "state", "todayPrefix": today()}, port=port, timeout=180)
     if d.get("error"):
         raise RuntimeError("查平台状态失败: %s" % d["error"])
+    # ★★ 顺带取**权威的闲时额度** —— 页面左下角「用量 used/total」同源：
+    #    GET /vidu/v1/tasks/quota → nopeak_quota:{used,total}
+    #    （2026-10-13 实测；比"数今天任务"准，也不受 created_at 时区影响）
+    try:
+        qd = call({"op": "quota"}, port=port, timeout=90)
+        nq = qd.get("nopeak_quota") or {}
+        if nq:
+            d["nopeak_used"] = int(nq.get("used") or 0)
+            d["nopeak_total"] = int(nq.get("total") or 0)
+            d["nopeak_left"] = max(0, d["nopeak_total"] - d["nopeak_used"])
+    except Exception:
+        pass
     return d
+
+
+def _stop_for_quota(q, path, pend, used, daily, conc, inflight, a):
+    """★★ 闲时额度用完 ⇒ **停止作业**（不再空转等待），写状态 + 给出可执行的下一步。
+
+    为什么必须"停"而不是"等"：
+      额度当天用完后**不会自己恢复**（0 点才重置）。旧代码在这里 `sleep(interval)` 死等，
+      结果是**整夜空转**、用户以为还在跑 —— 既浪费时间也让人误判进度。
+      正确做法：**停下、说清楚、给出选项、支持续跑**（队列里 submitted 的组天然跳过）。
+    """
+    now = datetime.now()
+    q["daily"]["stopped_reason"] = "quota_exhausted"
+    q["daily"]["stopped_at"] = now.isoformat(timespec="seconds")
+    q["daily"]["stopped_used"] = used
+    q["daily"]["stopped_daily"] = daily
+    save_queue(path, q)
+    log({"mode": "queue_stopped", "reason": "quota_exhausted",
+         "used": used, "daily": daily, "pending": len(pend), "inflight": inflight})
+
+    py = os.path.basename(sys.executable)
+    sd = os.path.dirname(os.path.abspath(__file__))
+    bar = "=" * 66
+    print("\n" + bar)
+    print(" ⛔ 闲时额度已用完 —— 已停止作业（不再空转等待）")
+    print(bar)
+    print(" 今日闲时 ：%d / %d（用完）" % (used, daily))
+    print(" 进行中   ：%d（并发上限 %d，跑完不影响额度）" % (inflight, conc))
+    print(" 未提交   ：%d 组 —— ★ 原样保留，不会丢" % len(pend))
+    print(" 队列文件 ：%s" % path)
+    print()
+    print(" ⇒ 二选一：")
+    print("    A. 【换账号】今天继续跑")
+    print("       %s \"%s\\vidu_edge.py\" up --account 账号2" % (py, sd))
+    print("       %s \"%s\\vidu_queue.py\" run --jobs <jobs_vidu.json>" % (py, sd))
+    print("       ★ 队列里 submitted 的组会自动跳过，**只跑剩下的 %d 组**。" % len(pend))
+    print()
+    print("    B. 【等明天】额度 0 点重置")
+    print("       明早重跑同一条 run 命令即可 —— 台账跳过已完成，接着跑。")
+    print()
+    print(" ⚠ 别反复重跑：额度没恢复时重跑会立刻再次停在这里（不影响已完成部分）。")
+    print(bar + "\n")
+    return 2          # ★ 退出码 2 = 额度耗尽（1=错误，0=正常结束）
 
 
 # ---------------------------------------------------------------- 子命令
@@ -175,6 +229,7 @@ def cmd_run(a):
         round_no += 1
         q = _roll_day(load_queue(path) or q)
         inflight = 0
+        st = {}
         try:
             st = platform_state(a.port)
             inflight = st.get("inflight", 0)
@@ -185,13 +240,28 @@ def cmd_run(a):
             print("  ⚠ 平台状态取不到（%s）；按本地台账继续" % e)
 
         used = q["daily"]["submitted"]
-        slots = min(conc - inflight, daily - used)
+        conc_left = conc - inflight      # 并发出位余量
+        quota_left = daily - used        # 今日闲时额度余量
+        # ★★ **权威额度优先**：平台 `nopeak_quota` 是它自己算的（= 页面左下「用量」），
+        #    比"本地台账"和"数今天任务"都准 —— 有它就以它为准。
+        if q["mode"] == "nopeak" and st.get("nopeak_left") is not None:
+            quota_left = st["nopeak_left"]
+            used = st.get("nopeak_used", used)
+        slots = min(conc_left, quota_left)
         pend = [it for it in q["items"] if it["status"] == "pending"]
-        print("[%s] 第%d轮  进行中=%d  今日已提交=%d  可投=%d  待办=%d"
-              % (datetime.now().strftime("%H:%M:%S"), round_no, inflight, used,
+        qt = ("闲时 %s/%s" % (st.get("nopeak_used"), st.get("nopeak_total"))
+              if st.get("nopeak_total") is not None else "闲时 ?/?")
+        print("[%s] 第%d轮  %s  进行中=%d  可投=%d  待办=%d"
+              % (datetime.now().strftime("%H:%M:%S"), round_no, qt, inflight,
                  max(0, slots), len(pend)))
 
         if slots <= 0:
+            # ★★ 关键：**两种"投不出去"性质完全不同，必须分开处理**
+            #   · 并发满(conc_left<=0) ⇒ 任务跑完会释放 ⇒ **该等**（正常节奏）
+            #   · 额度用完(quota_left<=0) ⇒ 今天不会自己恢复 ⇒ **该停**，交用户决策
+            #     （旧代码在这里无脑 sleep 等待 ⇒ 程序整夜空转，用户还以为在跑）
+            if quota_left <= 0 and pend:
+                return _stop_for_quota(q, path, pend, used, daily, conc, inflight, a)
             if a.once:
                 break
             time.sleep(a.interval)

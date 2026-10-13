@@ -102,6 +102,18 @@ JS = r"""(async (spec) => {
   const upAud = async (b64, type, dur) => upFile(b64, type, {duration: String(dur)});
 
   if (spec.op === 'quota') {
+    // ★★ 闲时额度（每天 200 条）**在这里** —— 页面左下角「用量 used/total」就是它：
+    //    GET /vidu/v1/tasks/quota → {"nopeak_quota":{"used":200,"total":200},"claw_pass_quota":null}
+    //    ⛔ 别再用 /credit/v1/credits/me 猜额度 —— 那是**积分**，完全是另一回事（踩过）。
+    const rq = await fetch(S + '/vidu/v1/tasks/quota', {headers: H, credentials:'include'});
+    const pq = await jp(rq);
+    const qj = pq.j || {};
+    out.nopeak_quota = qj.nopeak_quota || null;       // {used, total}
+    out.claw_pass_quota = qj.claw_pass_quota || null;
+    out.quota_raw = qj || pq.err;
+    out.nopeak_left = qj.nopeak_quota
+        ? Math.max(0, (qj.nopeak_quota.total || 0) - (qj.nopeak_quota.used || 0)) : null;
+    // 积分（另一回事，顺带取）
     const r = await fetch(S + '/credit/v1/credits/me', {headers: H, credentials:'include'});
     const p = await jp(r); out.quota = p.j || p.err;
   }
@@ -255,12 +267,73 @@ def build_settings(duration, ratio, mode="nopeak", resolution="1080p"):
 # ---------------- 子命令 ----------------
 def cmd_quota(a):
     d = call({"op": "quota"}, port=a.port, timeout=90)
+    nq = d.get("nopeak_quota") or {}
     q = d.get("quota") or {}
-    print(json.dumps(q, ensure_ascii=False, indent=1))
+    if nq:
+        used, total = nq.get("used"), nq.get("total")
+        print("★ 闲时额度：已用 %s / %s　剩余 %s" % (used, total, d.get("nopeak_left")))
+        if d.get("nopeak_left") == 0:
+            print("  ⛔ 今天的闲时额度**已用完** —— 出片会停在门禁处；"
+                  "换账号（`vidu_edge.py up --account 账号2`）或等明天 0 点重置。")
+    else:
+        print("⚠ 没读到 nopeak_quota（页面可能不在创作页 → 先 `vidu_edge.py up`）")
     if isinstance(q, dict) and "credits" in q:
-        print("\n★ credits=%s  free=%s  subscribed=%s  concurrency=%s"
-              % (q.get("credits"), q.get("credits_free"), q.get("credits_subscribed"), q.get("concurrency")))
+        print("  积分：credits=%s free=%s subscribed=%s concurrency=%s"
+              % (q.get("credits"), q.get("credits_free"),
+                 q.get("credits_subscribed"), q.get("concurrency")))
+    else:
+        print("  积分：%s" % json.dumps(q, ensure_ascii=False)[:200])
     return 0
+
+
+def gate_check(port=9222, need=1, label=""):
+    """★★ 闲时额度门禁 —— 提交**之前**必须过这一关。
+
+    返回 (ok, info)：
+      ok=True  ⇒ 还能跑（info 带 used/total/left/need）
+      ok=False ⇒ **额度不足，调用方应当停止**并提示用户（换账号 / 等明天）
+
+    ★ 数据源 = `GET /vidu/v1/tasks/quota` → `nopeak_quota:{used,total}`
+      —— 就是页面左下角「用量 used/total」那个数（2026-10-13 实测确认）。
+      ⛔ 不要用 /credit/v1/credits/me 猜额度（那是积分，口径完全不同）。
+    """
+    d = call({"op": "quota"}, port=port, timeout=90)
+    nq = d.get("nopeak_quota")
+    if not nq:
+        return True, {"unknown": True, "reason": str(d.get("quota_raw"))[:200]}
+    used = int(nq.get("used") or 0)
+    total = int(nq.get("total") or 0)
+    left = max(0, total - used)
+    return (left >= need), {"used": used, "total": total, "left": left, "need": need,
+                            "label": label}
+
+
+def _quota_stop_msg(info, need):
+    """★★ 额度不足时的**统一停止提示** —— 必须让用户一眼知道：停下了 + 下一步做什么。
+
+    ★ 关键：额度当天用完后**不会自己恢复**（0 点才重置）⇒ 只有"换账号 / 等明天"两条路。
+      所以这里**不等待、不重试**，直接停下并说清楚。
+    """
+    sd = os.path.dirname(os.path.abspath(__file__))
+    py = os.path.basename(sys.executable)
+    bar = "=" * 66
+    return "\n".join([
+        "", bar,
+        " ⛔ 闲时额度不足 —— 已停止作业（不硬跑到平台报错，也不空转等待）",
+        bar,
+        " 今日闲时：%s / %s（剩余 %s）" % (info.get("used"), info.get("total"), info.get("left")),
+        " 本次需要：%s" % need,
+        "",
+        " ⇒ 二选一：",
+        "    A. 【换账号】今天继续跑",
+        "       %s \"%s\\vidu_edge.py\" up --account 账号2" % (py, sd),
+        "       然后重跑本命令 —— 已完成的组会自动跳过",
+        "    B. 【等明天】额度 0 点重置",
+        "       明早重跑同一条命令即可，接着跑剩下的",
+        "",
+        " ⚠ 别反复重跑：额度没恢复时，重跑会立刻再次停在这里（不影响已完成部分）。",
+        bar, "",
+    ])
 
 
 def cmd_elements(a):
@@ -286,6 +359,17 @@ def cmd_run(a):
     if not jobs:
         print("★ 没有匹配的组"); return 1
     print("计划直提 %d 组，mode=%s" % (len(jobs), a.mode))
+    # ★★ 闲时额度门禁 —— 提交**之前**先看够不够，别跑到一半被平台拒
+    if a.mode == "nopeak" and not a.dry_run:
+        okq, info = gate_check(a.port, need=len(jobs), label="本次批量")
+        if info.get("unknown"):
+            print("  ⚠ 额度读不到（%s）—— 继续提交，由平台错误兜底" % info.get("reason"))
+        elif not okq:
+            print(_quota_stop_msg(info, len(jobs)))
+            return 2
+        else:
+            print("  额度：闲时 %s/%s，剩余 %s ≥ 需要 %s ⇒ 放行"
+                  % (info["used"], info["total"], info["left"], len(jobs)))
     ok = fail = 0
     for i, j in enumerate(jobs, 1):
         text = render_prompt(j["prompt"])
