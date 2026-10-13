@@ -19,7 +19,7 @@ document.querySelectorAll('*').length → 1121
 document.body.innerHTML.includes('上传') → true
 ```
 
-**修复**：`Page.bringToFront`（3 秒内 bodyLen 38 → 17385）。
+**修复**：见本文件末尾「**窗口不抢焦点**」节 —— ⛔ 已**不再**使用 `Page.bringToFront`（它会抢焦点）。
 脚本里还加了 `Emulation.setFocusEmulationEnabled({enabled:true})` 兜底。
 
 ⚠ **旧记载「`Page.navigate` 同 URL 会让 SPA 卡住，要用 `Page.reload`」是误判，已作废。**
@@ -116,7 +116,7 @@ GET https://service.vidu.cn/vidu/v1/tasks/history/me?page_size=100
 - ★★ **必须翻页**：老剧的组会被新任务挤出第 1 页 ⇒ 不翻页会**整批报「台账里没有该组」**，
   看起来像"任务丢了"（本项目实测：第 1 页 100 条只命中 0 组；翻到 1981 条才全命中）。
 - 在页面上下文里 `fetch(url, {credentials:'include'})` 即可复用登录态。
-  ⚠ 后台标签会冻结 promise ⇒ 先 `Page.bringToFront`。
+  ⚠ 后台标签会冻结 promise ⇒ 已在**启动参数**层面取消节流（见文末节），⛔ 不要用 `Page.bringToFront`。
 - ⚠ 返回体**很大**（100 条 ≈ 770 KB，因为含每条的**完整提示词原文**）⇒ 取回后在 JS 侧就裁成需要的字段。
 
 ### 任务对象（实测字段）
@@ -531,3 +531,31 @@ vidu_api.py raw --prompt-file 客户提示词.txt \
 - ★ **文本一个字都不动** —— 与 `run`（会做 `pnN,名=@` → `[@图N]` 转换）的区别就在这。
 - 资产**按顺序**挂：`--image` 第 1 个 = `图1`，第 2 个 = `图2`…；音频同理（≤3）。
 - ★ 与用户提示词里 `[@图N]` 的对应关系**由用户保证**；我们只在**检测不到引用标记时告警**（仍照提交）。
+
+## ★★ 窗口**不抢焦点**（2026-10-13 根治，取代旧的 `bringToFront`）
+
+**问题**：Chromium 会**节流后台/被遮挡的标签** ⇒ 页面只渲染侧栏（`bodyLen=38`、`fileInput=0`），
+页面内的 `fetch` promise 被**冻结**（永远 pending）。
+**旧对策**是每次操作前 `Page.bringToFront` —— 但它会把窗口**拽到前台抢焦点**：
+用户在用别的软件时窗口反复跳出，**无法接受**。
+
+**现在的做法（从根上取消节流，且完全不抢焦点）**：
+
+1. **启动参数** —— `vidu_edge.py::build_cmdline` 带 4 个开关：
+   | 开关 | 作用 |
+   |---|---|
+   | `--disable-features=CalculateNativeWinOcclusion` | ★ **Windows 专用且最关键**：不再判定"窗口被遮挡" |
+   | `--disable-backgrounding-occluded-windows` | 被遮挡的窗口不当后台处理 |
+   | `--disable-renderer-backgrounding` | renderer 不做后台降级 |
+   | `--disable-background-timer-throttling` | 后台 timer 不节流 |
+2. 页面里补 **`Emulation.setFocusEmulationEnabled(true)`** —— 让页面"以为"有焦点
+   （对 `document.hasFocus()` / `execCommand` 有用），**同样不抢窗口焦点**。
+3. ⛔ **不要再调 `Page.bringToFront`**（全部脚本已移除该调用）。
+
+**实测**（把窗口最小化 4 秒后测）：
+- `bodyLen` 保持 **11438**（未降级为 38）
+- 页面内 `fetch` 正常返回 **HTTP 200**
+⇒ **窗口可以安静待在后台，用户照常用别的软件**。
+
+> 例外：`--headless` 场景本就没有窗口；若哪天又见"只剩侧栏"，先查**启动参数是否被旧实例覆盖**
+> （旧进程没有这 4 个开关 ⇒ `vidu_edge.py down` 后再 `up`）。

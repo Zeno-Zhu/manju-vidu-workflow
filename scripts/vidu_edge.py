@@ -361,8 +361,29 @@ def active_udd(a):
 
 
 def build_cmdline(a):
+    """构造 Edge 启动命令行。
+
+    ★★ 末尾 4 个开关是**「窗口待在后台也别降级」**的关键（2026-10-13 加）：
+
+      Windows 上的 Chromium 会检测**窗口是否被其它窗口遮挡**（Native Window Occlusion），
+      一旦判定"被遮挡 / 不在前台"，就**降低渲染优先级、节流 timer、冻结后台标签的 promise**。
+      这正是「窗口一到后台，页面就只剩侧栏不渲染、fetch 永远 pending」的根因。
+
+      ⛔ 以前的对策是**每次操作前 `Page.bringToFront`** —— 那会**把窗口拽到前台抢焦点**，
+         用户在用别的软件时极其恼人（窗口反复跳出来）。
+      ✅ 这 4 个开关从**根上取消节流** ⇒ 窗口可以安安静静待在后边，操作照样生效：
+
+        --disable-features=CalculateNativeWinOcclusion   ★ Windows 专用且最关键（不判遮挡）
+        --disable-backgrounding-occluded-windows         被遮挡的窗口不当后台处理
+        --disable-renderer-backgrounding                 renderer 不做后台降级
+        --disable-background-timer-throttling            后台 timer 不节流
+    """
     return ('"%s" --remote-debugging-port=%d --user-data-dir=%s'
             ' --profile-directory=%s --no-first-run --no-default-browser-check'
+            ' --disable-features=CalculateNativeWinOcclusion'
+            ' --disable-backgrounding-occluded-windows'
+            ' --disable-renderer-backgrounding'
+            ' --disable-background-timer-throttling'
             ' --remote-allow-origins=* %s'
             % (EDGE_EXE, a.port, active_udd(a), a.profile, a.url))
 

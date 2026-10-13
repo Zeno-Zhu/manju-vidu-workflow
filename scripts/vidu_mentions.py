@@ -107,7 +107,7 @@ def wait_mentions(c, n_expect, timeout=120):
     last = {}
     while time.time() - t0 < timeout:
         try:
-            c.send("Page.bringToFront")   # 防等待期间标签被切到后台而停渲染
+            c.send("Emulation.setFocusEmulationEnabled", {"enabled": True})  # 防等待期间标签被切到后台而停渲染
         except Exception:
             pass
         last = collect_mentions(c)

@@ -211,6 +211,31 @@ python scripts/vidu_image.py r2i --prompt "保持人物外貌与服装不变，�
 
 ---
 
+## 它**不抢你的屏幕**
+
+脚本驱动浏览器时，**Edge 窗口不会跳到前台、不会反复弹出来抢焦点** ——
+你可以把窗口缩小放一边，同时继续用别的软件。
+
+**怎么做到的**（不是靠"忍着"，是从根上取消）：
+
+Chromium 会**节流后台/被遮挡的标签** —— 页面只渲染侧栏、页面里的请求永远 pending。
+很多工具的做法是每次操作前把窗口**拽到前台**，那就是窗口老跳出来的原因。
+
+本项目改为在**浏览器启动参数**层面取消节流：
+
+```
+--disable-features=CalculateNativeWinOcclusion   ← Windows 专用，最关键
+--disable-backgrounding-occluded-windows
+--disable-renderer-backgrounding
+--disable-background-timer-throttling
+```
+
+再补一个 `Emulation.setFocusEmulationEnabled` 让页面"以为"有焦点（同样不抢窗口焦点）。
+
+**实测**：把窗口最小化 4 秒后，页面内容完整、页面内的 API 请求照常返回 200。
+
+---
+
 ## 资产管理：客户目录乱怎么办
 
 客户拿来的项目目录**通常不是我们想要的样子** —— 标准目录旁边散着一堆

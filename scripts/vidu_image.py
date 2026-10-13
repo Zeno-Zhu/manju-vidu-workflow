@@ -163,7 +163,7 @@ JS = r"""(async (spec) => {
 def call(spec, port=9222, timeout=600):
     with CDP(port=port, url_contains="vidu.cn", timeout=60) as c:
         try:
-            c.send("Page.bringToFront")
+            c.send("Emulation.setFocusEmulationEnabled", {"enabled": True})  # ★ 只让页面"以为"有焦点，不抢窗口焦点
             c.send("Emulation.setFocusEmulationEnabled", {"enabled": True})
         except Exception:
             pass

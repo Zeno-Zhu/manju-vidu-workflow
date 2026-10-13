@@ -112,7 +112,7 @@ def fetch_tasks(port: int = 9222, max_pages: int = 20, page_size: int = 100):
     js = JS_FETCH % (max_pages, LIST_API, page_size, page_size)
     with CDP(port=port, timeout=40) as c:
         try:
-            c.send("Page.bringToFront")          # ★ 后台标签会冻结 fetch 的 promise
+            c.send("Emulation.setFocusEmulationEnabled", {"enabled": True})  # ★ 后台标签会冻结 fetch 的 promise
             c.send("Emulation.setFocusEmulationEnabled", {"enabled": True})
         except Exception:
             pass

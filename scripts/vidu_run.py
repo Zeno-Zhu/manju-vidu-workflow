@@ -23,7 +23,7 @@
 
 ═══ 平台机制 ═══
   全部硬事实（页面渲染 / 上传 / mention / 设置区 / 定位坑 / 提交确认）见
-  **`references/vidu-平台机制.md`**；浏览器与登录态见 `INIT.md`。
+  **`references/平台机制.md`**；浏览器与登录态见 `INIT.md`。
 """
 from __future__ import annotations
 
@@ -56,8 +56,14 @@ def run_one(c, job, mode, cfg):
     #   **Chromium 会节流后台标签** —— Vidu 创作页主内容区依赖 rAF / 尺寸测量来挂载，
     #   标签不在前台就**永远停在只渲染侧栏**（bodyLen=38、fileInput=0、tiptap 不存在），
     #   但此时 `document.body.innerHTML` 已有 46 万字符 ⇒ 内容在，只是没渲染。
-    #   对策：`Emulation.setFocusEmulationEnabled(True)` + 每轮 `Page.bringToFront`
-    #   （实测 3 秒内 bodyLen 38→17385）。**这两条与刷不刷新无关，必须做。**
+    #   对策（2026-10-13 更新）：**从启动参数就取消节流**（最干净）——
+    #     Edge 启动时带 `--disable-features=CalculateNativeWinOcclusion`
+    #     `--disable-backgrounding-occluded-windows` `--disable-renderer-backgrounding`
+    #     `--disable-background-timer-throttling`（见 `vidu_edge.py::build_cmdline`），
+    #     再补 `Emulation.setFocusEmulationEnabled(True)` 让页面"以为"有焦点。
+    #   ⛔ **不要再调 `Page.bringToFront`** —— 那会把窗口**拽到前台抢焦点**，
+    #      用户在用别的软件时窗口反复跳出，非常恼人。
+    #   （实测 3 秒内 bodyLen 38→17385，且窗口可以安静待在后台。）**必须做。**
     #
     # ★ 刷新只为"组间复位"：上一组的图片若还挂在资产栏，新上传的会接着编号成 图8/图9…，
     #   `pnN → 图N` 的映射就整体错位。所以：
@@ -69,7 +75,7 @@ def run_one(c, job, mode, cfg):
     ready = False
     while time.time() - t0 < 90:
         try:
-            c.send("Page.bringToFront")
+            c.send("Emulation.setFocusEmulationEnabled", {"enabled": True})  # ★ 只让页面"以为"有焦点，不抢窗口焦点
             c.send("Emulation.setFocusEmulationEnabled", {"enabled": True})
         except Exception:
             pass

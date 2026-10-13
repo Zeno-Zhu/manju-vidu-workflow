@@ -43,7 +43,7 @@ Vidu 是**网页平台**，只能用 CDP 驱动浏览器操作。让 CDP 能连�
 **Edge 必须以「非默认 user-data-dir」启动并开 `--remote-debugging-port`**。
 
 ⚠ 上手自动化前先看 `references/vidu-平台机制.md` §0：**页面"卡在只渲染侧栏"不是坏了，
-是 Chromium 节流后台标签**，`Page.bringToFront` 就好。
+是 Chromium 节流后台标签** —— 已在**启动参数**层面解决（`--disable-features=CalculateNativeWinOcclusion` 等 4 个开关）。⛔ 不要用 `Page.bringToFront`：它会**把窗口拽到前台抢焦点**。
 
 ---
 

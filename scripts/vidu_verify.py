@@ -76,7 +76,7 @@ def main():
     a = ap.parse_args()
 
     with CDP(port=a.port, url_contains="vidu.cn", timeout=30) as c:
-        c.send("Page.bringToFront")
+        c.send("Emulation.setFocusEmulationEnabled", {"enabled": True})  # ★ 只让页面"以为"有焦点，不抢窗口焦点
         doc = c.eval(JS_DOC) or {}
         if doc.get("err"):
             print("★ 编辑器不可用:", doc["err"]); return 1

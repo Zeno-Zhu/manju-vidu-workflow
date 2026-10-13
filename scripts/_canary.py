@@ -46,7 +46,7 @@ NEEDLE_RE = re.compile(re.escape(DOC_NEEDLE))
 # 需要埋点的文件类型（源码 + 文档）
 TARGET_EXT = (".py", ".md", ".cmd")
 # 不埋的目录（第三方 / 素材）
-SKIP_PARTS = ("__pycache__", ".git", "assets")
+SKIP_PARTS = ("__pycache__", ".git", "assets", ".workbuddy")
 # 不埋的文件（二进制 / 本身就是标记载体）
 SKIP_FILES = ("core.enc",)
 

@@ -234,7 +234,7 @@ def call(spec, port=9222, timeout=420):
     """在 vidu 页面上下文里执行一次 API 编排。"""
     with CDP(port=port, url_contains="vidu.cn", timeout=60) as c:
         try:
-            c.send("Page.bringToFront")            # ★ 后台标签会冻结 fetch 的 promise
+            c.send("Emulation.setFocusEmulationEnabled", {"enabled": True})  # ★ 后台标签会冻结 fetch 的 promise
             c.send("Emulation.setFocusEmulationEnabled", {"enabled": True})
         except Exception:
             pass
