@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# (c) manju-vidu-workflow · MJVID:146e215dba · 溯源标记，请保留
 """vidu_submit.py —— 点「创作」并**用网络确认**（本渠道最容易白跑的一步）。
 
 ★★ 实测（2026-10-07）：改完设置后平台会先算积分，期间按钮 `aria-disabled=true`；

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# (c) manju-vidu-workflow · MJVID:6712352a70 · 溯源标记，请保留
 """shot_language_check.py — 跨渠道「镜头语言」体检门（零计费、纯本地）
 
 解决什么

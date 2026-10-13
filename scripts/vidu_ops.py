@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# (c) manju-vidu-workflow · MJVID:08da7c8b3d · 溯源标记，请保留
 """vidu_ops.py —— 页面原语（上传 / 点击 / 设置区 / 组间复位）。
 
 只负责"把页面点对"，**不含任何渠道策略**；编排在 `vidu_run.py`，

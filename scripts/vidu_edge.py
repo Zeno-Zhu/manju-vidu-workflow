@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# (c) manju-vidu-workflow · MJVID:2f7421e1b2 · 溯源标记，请保留
 """
 vidu_edge.py —— Vidu 渠道「浏览器实例」的唯一入口：开 / 查 / 关 / 重启。
 

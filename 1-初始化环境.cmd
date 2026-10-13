@@ -1,4 +1,5 @@
 @echo off
+rem (c) manju-vidu-workflow - MJVID:d2664faa3e - provenance marker, please keep
 chcp 65001 >nul
 title Init - MANJU Skill (Vidu channel) - one time
 cd /d "%~dp0"

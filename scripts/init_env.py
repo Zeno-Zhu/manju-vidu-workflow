@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# (c) manju-vidu-workflow · MJVID:48cb37b813 · 溯源标记，请保留
 """init_env.py —— 一次性环境自检 / 安装（★ 用户双击 `1-初始化环境.cmd` 时被调用）。
 
 ═══ 它解决什么 ═══

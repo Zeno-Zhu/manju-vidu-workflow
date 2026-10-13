@@ -1,5 +1,7 @@
 # 全流程索引（Phase 0–10）
 
+<!-- (c) manju-vidu-workflow · MJVID:b4c9dafe68 · 溯源标记请勿删除 -->
+
 ---
 
 ## ★★ 本包（Vidu · 自己人）的适配 —— **先读这一节**

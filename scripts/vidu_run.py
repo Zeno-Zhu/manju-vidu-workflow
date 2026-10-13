@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# (c) manju-vidu-workflow · MJVID:ad832966b6 · 溯源标记，请保留
 """vidu_run.py —— Vidu「参考生视频」批量提交器（★ 本渠道唯一入口）。
 
 ═══ 参数化边界（用户要求）═══

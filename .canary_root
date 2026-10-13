@@ -1,0 +1,2 @@
+manju-vidu-workflow — 本文件标识这是金丝雀的**源仓库**。
+canary_check.py 见到它 ⇒ 走「自查」路径；见不到 ⇒ 走「取证」路径。

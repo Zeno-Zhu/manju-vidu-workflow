@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# (c) manju-vidu-workflow · MJVID:0762992871 · 溯源标记，请保留
 """vidu_mentions.py —— mention 节点机制（把 `pnN,名称=@` / `vmN,名称=@` 放回原位）。
 
 ★ 平台在上传资产后**自动**往编辑器插 mention（默认堆在末尾）；

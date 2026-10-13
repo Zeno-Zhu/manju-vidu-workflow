@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# (c) manju-vidu-workflow · MJVID:2d2e3157eb · 溯源标记，请保留
 """vidu_queue.py —— Vidu「闲时额度」队列调度器（★ 任务 2）。
 
 ═══ 它解决什么 ═══

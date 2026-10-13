@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# (c) manju-vidu-workflow · MJVID:2bf51e4efb · 溯源标记，请保留
 """
 vidu_session.py —— Vidu 登录态的「定位 / 检查 / 备份 / 恢复」。
 

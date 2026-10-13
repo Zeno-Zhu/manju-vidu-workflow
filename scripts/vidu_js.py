@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# (c) manju-vidu-workflow · MJVID:2bae685b44 · 溯源标记，请保留
 """vidu_js.py —— 在 Vidu 页面上执行的**全部 JS 片段**（纯字符串常量，无业务逻辑）。
 
 为什么单独放：这些片段里带着大量**实测注释**（DOM 结构、作用域收窄的坑、

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# (c) manju-vidu-workflow · MJVID:c3b8b10200 · 溯源标记，请保留
 """vidu_image.py —— Vidu 出图：**文生图** ＋ **参考图生图**（★ 资产能力补齐）。
 
 ═══ 它解决什么 ═══

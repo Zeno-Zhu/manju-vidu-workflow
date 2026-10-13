@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# (c) manju-vidu-workflow · MJVID:1de313acfa · 溯源标记，请保留
 """vidu_log.py —— 运行留痕（红线：长任务必须留痕）。
 
 ★ 机器级状态**只写 `~/.manju-vidu/`**，绝不写进 skill 目录

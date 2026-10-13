@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# (c) manju-vidu-workflow · MJVID:40089c01a9 · 溯源标记，请保留
 """vidu_daily.py —— Vidu 每日收尾：拉台账 → 下载 → 按「剧名 / 分集 / 分镜组」重命名 → 出日报（★ 任务 3）。
 
 ═══ 它解决什么 ═══

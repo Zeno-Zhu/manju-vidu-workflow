@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# (c) manju-vidu-workflow · MJVID:7a662874ab · 溯源标记，请保留
 """
 vidu_verify.py —— **只读**核验当前 Vidu 创作页上的表单状态（不刷新、不点击、不提交）。
 

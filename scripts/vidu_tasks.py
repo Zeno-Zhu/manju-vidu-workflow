@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# (c) manju-vidu-workflow · MJVID:3d43e8b4f6 · 溯源标记，请保留
 """vidu_tasks.py —— Vidu 任务台账 / 无水印下载 / 重命名（★ 渠道第二入口）。
 
 ═══ 它解决什么 ═══

@@ -1,5 +1,7 @@
 # Vidu 平台机制（2026-10-07 实测，权威）
 
+<!-- (c) manju-vidu-workflow · MJVID:28d4b3c9b6 · 溯源标记请勿删除 -->
+
 > 本文件记录**从平台实测出来的硬事实**。与脚本里的注释互为冗余，改脚本时同步改这里。
 > 渠道 = `https://www.vidu.cn/create/character2video`（参考生视频）。
 

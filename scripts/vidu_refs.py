@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# (c) manju-vidu-workflow · MJVID:b6e4ba60f0 · 溯源标记，请保留
 """vidu_refs.py —— Vidu「主体库」批量管理（★ 纯 API，不点 UI）。
 
 ═══ 它解决什么 ═══

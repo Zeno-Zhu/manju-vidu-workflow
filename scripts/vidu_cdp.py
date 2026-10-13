@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# (c) manju-vidu-workflow · MJVID:42a49d9eba · 溯源标记，请保留
 """
 vidu_cdp.py —— Vidu 平台渠道的最小 CDP 客户端（零第三方依赖，仅需 websocket-client）。
 

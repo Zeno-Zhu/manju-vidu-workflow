@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# (c) manju-vidu-workflow · MJVID:9edc210c1e · 溯源标记，请保留
 """vidu_api.py —— Vidu 任务**直连提交**（不点 UI）+ 额度查询。
 
 ═══ 为什么需要它 ═══
