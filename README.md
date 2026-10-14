@@ -11,7 +11,7 @@
 **① 拿到本仓库**
 
 ```bash
-git clone https://github.com/<你的账号>/<仓库名>.git
+git clone https://github.com/Zeno-Zhu/manju-vidu-workflow.git
 ```
 
 或在 GitHub 页面点 **Code → Download ZIP** 解压。
@@ -33,6 +33,55 @@ git clone https://github.com/<你的账号>/<仓库名>.git
 登录态存在**独立 profile** 里，以后不用再登。再跑一次 `1-初始化环境.cmd`，看到「环境全部就绪」即可。
 
 **依赖**：Python 3.8+ ＋ `websocket-client` ＋ Microsoft Edge —— **不需要 Node**。
+
+---
+
+## 更新（已经装过旧版本）
+
+> ★ **更新很安全** —— 你的**项目文件、账号登录态、已出的片**都**不在这个目录里**，
+> 更新只会替换**代码和文档**，动不到它们。
+
+### 方式 A：git 拉取（推荐）
+
+```bash
+cd <你 clone 的目录>
+git pull
+```
+
+### 方式 B：下载 ZIP 覆盖（没装 git 也能用）
+
+1. 打开 https://github.com/Zeno-Zhu/manju-vidu-workflow
+2. **Code → Download ZIP**
+3. 解压，把里面的文件**覆盖**到旧目录（同名文件覆盖即可）
+4. 双击 `1-初始化环境.cmd`
+
+### 更新后要做什么
+
+**跑一次 `1-初始化环境.cmd` 就够了**（它是幂等的 —— 已配好的项会秒过，缺的会自动补）。
+
+| 情况 | 做法 |
+|---|---|
+| 一般更新 | 双击 `1-初始化环境.cmd` |
+| 提示缺依赖 / Python 版本不够 | 它会自己装，按提示重开窗口再跑一次 |
+| ★ **浏览器行为异常**（起不来 / 页面空白 / 还在抢焦点） | `vidu_edge.py down` 再 `up` —— 新版可能改了**启动参数**，旧实例不会自动带上 |
+| 桌面快捷方式不见了 | 重跑 `python scripts/vidu_shortcuts.py`（或跑初始化） |
+
+### ★ 更新**不会**影响这些
+
+| 东西 | 在哪 | 为什么不受影响 |
+|---|---|---|
+| 账号登录态 / cookie | `~/.manju-vidu/profiles/<账号>/` | **在仓库之外** |
+| 实例状态 / 日志 | `~/.manju-vidu/instances/`、`vidu_edge.log` | 同上 |
+| 你的项目（剧本 / 资产 / 成片） | 你自己指定的目录 | 同上 |
+| 桌面快捷方式 | 桌面 | 路径不变，自动沿用 |
+
+### 怎么看有没有新版
+
+- 打开仓库首页看**最近提交时间**（Latest commit）
+- 或拉取后：`git log -1 --format="%cd  %s"`
+
+> 本项目更新较频繁（接口口径、平台规则常变），**建议每周拉一次**。
+> 改动记录见仓库的提交历史。
 
 ---
 
