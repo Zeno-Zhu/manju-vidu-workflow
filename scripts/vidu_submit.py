@@ -99,6 +99,54 @@ def wait_submit_ready(c, timeout=25.0):
         time.sleep(1.0)
     return last or {}
 
+JS_CONSENT = r"""(() => {
+  // ★ 2026-10-15 新增：首次提交会弹「生物识别信息授权声明（声纹特征信息）」模态。
+  //   不勾选+确认的话，点「创作」只弹窗、不发 POST ⇒ 表现为"点了没反应"。
+  const has = [...document.querySelectorAll('*')].some(e =>
+    (e.textContent || '').trim().indexOf('我已阅读并同意《') === 0);
+  if (!has) return null;
+  const el = [...document.querySelectorAll('*')].find(e =>
+    (e.textContent || '').trim().indexOf('我已阅读并同意《') === 0);
+  const row = el.closest('.flex.items-center') || el.parentElement;
+  const cb = row && row.querySelector('button');
+  let cbox = null;
+  if (cb) { const r = cb.getBoundingClientRect();
+            cbox = {x: Math.round(r.x + r.width/2), y: Math.round(r.y + r.height/2),
+                    state: cb.getAttribute('data-state')}; }
+  const go = [...document.querySelectorAll('button,div,span')].find(e =>
+    !e.children.length && (e.textContent || '').trim() === '已阅读并同意，继续创作');
+  let goC = null;
+  if (go) { const r = go.getBoundingClientRect();
+            goC = {x: Math.round(r.x + r.width/2), y: Math.round(r.y + r.height/2)}; }
+  return {cbox: cbox, go: goC};
+})()"""
+
+
+def accept_consent_modal(c, timeout=4.0):
+    """若出现「声纹授权书」模态：勾选同意 + 点「已阅读并同意，继续创作」。返回是否处理过。"""
+    t0 = time.time()
+    m = None
+    while time.time() - t0 < timeout:
+        try:
+            m = c.eval(JS_CONSENT)
+        except Exception:
+            m = None
+        if m:
+            break
+        time.sleep(0.4)
+    if not m:
+        return False
+    if m.get("cbox") and m["cbox"].get("state") != "checked":
+        mouse_click(c, m["cbox"]["x"], m["cbox"]["y"])
+        time.sleep(0.8)
+    m2 = c.eval(JS_CONSENT) or m
+    if m2.get("go"):
+        mouse_click(c, m2["go"]["x"], m2["go"]["y"])
+        time.sleep(2.0)
+    log({"info": "已接受声纹授权书（首次提交必须）"})
+    return True
+
+
 def click_submit(c, watch=None, tries=3):
     """点「创作」，并用网络确认**真的提交了**；没提交就重试。
 
@@ -112,6 +160,12 @@ def click_submit(c, watch=None, tries=3):
             return {"ok": False, "why": st, "detail": detail}
         n0 = watch.count() if watch else None
         mouse_click(c, st["x"], st["y"])
+        # ★ 2026-10-15：首次提交会弹「声纹授权书」模态 —— 处理掉后再补点一次「创作」
+        if accept_consent_modal(c):
+            time.sleep(1.0)
+            st2 = wait_submit_ready(c, timeout=12.0)
+            if not st2.get("err"):
+                mouse_click(c, st2["x"], st2["y"])
         # 等网络层确认（最多 20s）
         t0 = time.time()
         while time.time() - t0 < 20:

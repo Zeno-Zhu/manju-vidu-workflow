@@ -58,12 +58,17 @@ RE_GROUP = re.compile(r"分镜组ID：([^\n\r]+)")
 OK_STATES = ("success",)
 
 # ---------- 拉列表（在页面上下文里 fetch，复用登录态；自动翻页） ----------
-# ★★ 2026-10-13 修正翻页参数（旧写法用 created_at 游标，实测**只能拿到第 1 页**）：
-#   实测两套分页：
-#     · `page_size=100`          → 100 条 + `next_page_token.created_at`（游标式）
-#     · `pager.pagesz=N&pager.page=M` → **页码式**，★ 只写 `pager.page=M` 时每页只有 **10** 条
-#   本项目用页码式：`pager.pagesz=100&pager.page=M`（实测 page=2 返回的是另一批 100 条）。
-#   ⚠ 老剧的组会被新任务挤出第 1 页 ⇒ 不翻页会**整批报「台账里没有该组」**（踩过）。
+# ★★★ 2026-10-14 实测（重要）：`pager.pagesz` 决定的**不是"每页几条"，而是"取哪一段"** ——
+#   **pagesz 越大，page=1 返回的数据越旧**，于是**永远看不到当天的任务**：
+#     pagesz=5   → page=1 = 最新一批（★ 要的就是它）
+#     pagesz=20  → page=1 ≈ 8 小时前那一段
+#     pagesz=50  → page=1 ≈ 10 小时前那一段
+#     pagesz=100 → page=1 ≈ 16 小时前那一段      ← 旧默认值，当天任务永远查不到
+#   ⇒ **必须用 pagesz=5 的小页宽**（实测 page 递增即时间倒序、连续、不重不漏）。
+#   ⚠ 症状：用大 pagesz 时 `match` / `download` 会**整批报「台账里没有该组」**，
+#     极易误判成"提交失败"—— 其实任务好好地在平台上（2026-10-13~14 踩过）。
+#   · 游标式（`page_size=N` + `next_page_token.created_at`）实测**只拿得到第 1 页**，别用。
+#   · 小页宽 ⇒ 页数多，`max_pages` 默认与 CLI 默认都已放大（5×200 = 1000 条够用）。
 JS_FETCH = r"""(async () => {
   const out = [];
   for (let page = 1; page <= %d; page++) {
@@ -108,7 +113,7 @@ JS_FETCH = r"""(async () => {
 })()"""
 
 
-def fetch_tasks(port: int = 9222, max_pages: int = 20, page_size: int = 100):
+def fetch_tasks(port: int = 9222, max_pages: int = 200, page_size: int = 5):
     js = JS_FETCH % (max_pages, LIST_API, page_size, page_size)
     with CDP(port=port, timeout=40) as c:
         try:
@@ -377,7 +382,9 @@ def main():
         p = sub.add_parser(name)
         p.add_argument("--jobs", default="", help="jobs_vidu.json（用于定项目根 / 组清单）")
         p.add_argument("--port", type=int, default=9222)
-        p.add_argument("--max-pages", type=int, default=6)
+        p.add_argument("--max-pages", type=int, default=200,
+                       help="翻页上限（每页 5 条，200 页 = 1000 条）。"
+                            "★ 小页宽是拿得到当天任务的前提，别改大 pagesz")
         p.add_argument("--since", default="",
                        help="ISO 时间前缀（如 2026-10-07T09）；只认该时刻及之后提交的任务。"
                             "★ 同一组被提交过多轮（旧稿/新稿）时**必传**，否则会下到旧稿成片")

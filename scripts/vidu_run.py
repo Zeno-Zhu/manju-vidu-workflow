@@ -23,7 +23,7 @@
 
 ═══ 平台机制 ═══
   全部硬事实（页面渲染 / 上传 / mention / 设置区 / 定位坑 / 提交确认）见
-  **`references/平台机制.md`**；浏览器与登录态见 `INIT.md`。
+  **`references/vidu-平台机制.md`**；浏览器与登录态见 `INIT.md`。
 """
 from __future__ import annotations
 
@@ -83,7 +83,16 @@ def run_one(c, job, mode, cfg):
         try:
             bl = c.eval("document.body ? document.body.innerText.length : -1") or 0
             fi = c.eval("document.querySelectorAll('input[type=file]').length") or 0
-            if bl > 3000 and fi > 0:
+            # ★ 2026-10-15 修（本机实测）：原判据 `bl > 3000` 是**误报源** ——
+            #   页面其实已挂载（html 42 万字符、`.tiptap` 存在、按钮齐全），
+            #   但当初次进入/停留在「继续创作」态时 `body.innerText` 只有 ~1100 字，
+            #   于是脚本判「未挂载」直接放弃。改为：**有 file input 且（tiptap 已挂载 或 bodyText 够长）**。
+            tip = False
+            try:
+                tip = bool(c.eval("!!document.querySelector('.tiptap')"))
+            except Exception:
+                pass
+            if fi > 0 and (bl > 3000 or tip):
                 ready = True
                 break
         except Exception:
@@ -180,7 +189,7 @@ def run_one(c, job, mode, cfg):
     #   实测教训：时长条是轮播，格子滚出可视区时点击落在箭头上**静默无效**，
     #   旧代码只打一句 warn 就继续提交 ⇒ 声明 12s 的 11 组全部按默认 8s 出片，
     #   成片短 4 秒、台词被截，事后只能靠比对 settings.duration 才发现。
-    bad = [k for k in ("模型", "时长", "宽高比") if k in st and not st[k].get("ok")]
+    bad = [k for k in ("模型", "时长", "宽高比", "闲时创作") if k in st and not st[k].get("ok")]
     if bad:
         print("   ✗ 核心设置未生效：%s ⇒ 中止本组，不提交" % bad)
         log({"job": jid, "mode": mode, "status": "ABORT_SETTINGS", "bad": bad, "detail": st})

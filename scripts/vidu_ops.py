@@ -112,11 +112,45 @@ def _upload_audio_once(c, files, button, timeout):
         return False, {"err": "找不到「%s」按钮" % button}
     mouse_click(c, coord["x"], coord["y"])
 
+    # ★★ 2026-10-15 适配（本机实测）：点「音频」**不再直接弹文件框**，
+    #   而是先弹一个「音色选择弹窗」（内置音色 + 上传音频/取消/确认）。
+    #   必须再点弹窗里的「上传音频」才会出 fileChooserOpened。
+    #   老逻辑只点一次 ⇒ 永远收不到事件（实测 3 次全失败）。
+    up = None
+    for _ in range(12):
+        time.sleep(0.5)
+        up = c.eval(JS_BUTTON_COORD + "(%s)" % json.dumps("上传音频", ensure_ascii=False))
+        if up:
+            break
+    if up:
+        mouse_click(c, up["x"], up["y"])
     ev = wait_event(c, "Page.fileChooserOpened", timeout=timeout)
+    if not ev and up:
+        # 再补一次（弹窗内按钮有时首点被模态动画吃掉）
+        mouse_click(c, up["x"], up["y"])
+        ev = wait_event(c, "Page.fileChooserOpened", timeout=timeout)
     if not ev:
-        return False, {"err": "点击后未收到 fileChooserOpened", "coord": coord}
+        # 失败要把弹窗关掉，否则下一组会一直顶着遮罩
+        for label in ("取消", "Close"):
+            cc = c.eval(JS_BUTTON_COORD + "(%s)" % json.dumps(label, ensure_ascii=False))
+            if cc:
+                try:
+                    mouse_click(c, cc["x"], cc["y"])
+                except Exception:
+                    pass
+                break
+        return False, {"err": "点击后未收到 fileChooserOpened", "coord": coord, "upload_btn": up}
     bid = ev["backendNodeId"]
     c.send("DOM.setFileInputFiles", {"backendNodeId": bid, "files": files})
+    # ★ 弹窗里选完文件后可能要点「确认」才真正加到资产栏
+    time.sleep(2.5)
+    cf = c.eval(JS_BUTTON_COORD + "(%s)" % json.dumps("确认", ensure_ascii=False))
+    if cf:
+        try:
+            mouse_click(c, cf["x"], cf["y"])
+            time.sleep(1.0)
+        except Exception:
+            pass
     return True, {"backendNodeId": bid, "mode": ev.get("mode"), "n": len(files), "coord": coord}
 
 
@@ -260,7 +294,40 @@ def apply_settings(c, job, cfg):
     #   （vox 首测 6 组全部中招，POST settings.ratio='9:16' 实锤）。
     out["宽高比"] = set_dropdown(c, "宽高比", job.get("ratio") or cfg["ratio"])
     out["数量"] = set_cell(c, "数量", 1)
+    out["闲时创作"] = set_nopeak(c)
     return out
+
+
+JS_NOPEAK = r"""(() => {
+  // ★ 2026-10-15 新增：本剧要求「闲时创作（0 积分）」，页面默认是关的，必须打开。
+  const el = [...document.querySelectorAll('*')].find(e => (e.textContent || '').trim() === '闲时创作');
+  if (!el) return {err: 'no-label'};
+  let box = el;
+  for (let i = 0; i < 4 && box; i++) box = box.parentElement;
+  const sw = (box || document).querySelector('[role=switch]');
+  if (!sw) return {err: 'no-switch'};
+  const r = sw.getBoundingClientRect();
+  return {x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2),
+          state: sw.getAttribute('data-state'), aria: sw.getAttribute('aria-checked')};
+})()"""
+
+
+def set_nopeak(c):
+    """把「闲时创作」开关打开（幂等：已是 on 就跳过）。"""
+    for _ in range(3):
+        try:
+            st = c.eval(JS_NOPEAK) or {}
+        except Exception as e:  # noqa: BLE001
+            return {"ok": False, "why": str(e)[:120]}
+        if st.get("err"):
+            return {"ok": False, "why": st["err"]}
+        if st.get("state") == "checked" or str(st.get("aria")) == "true":
+            return {"ok": True, "already": "on"}
+        mouse_click(c, st["x"], st["y"])
+        time.sleep(0.8)
+    st = c.eval(JS_NOPEAK) or {}
+    ok = st.get("state") == "checked" or str(st.get("aria")) == "true"
+    return {"ok": ok, "to": st.get("state"), "why": None if ok else "点了开关但回读仍为关"}
 
 # ---------------------------------------------------------------- 单组流程
 # ---------------------------------------------------------------- 组间复位

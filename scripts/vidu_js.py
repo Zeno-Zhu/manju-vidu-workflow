@@ -176,7 +176,11 @@ JS_ROW_SCROLL_TO = wrap(r"""((spec) => {
     if (r.width < 12 || r.height < 12 || r.width > 90 || r.height > 90) return;
     if (Math.abs((r.y + r.height / 2) - cy) > 20) return;
     const off = r.x - lab.x;
-    if (off < -20 || off > 460) return;
+    // ★ 2026-10-15：偏移窗口由 -20..460 放宽到 -120..1400 ——
+    //   时长「15」在轮播里常位于 +460 之外 ⇒ 原窗口永远找不到它，
+    //   表现为 ABORT_SETTINGS（时长 试了 8 轮仍未把第 15 格滚进可视区）。
+    //   行对齐仍由上面的 y 容差(±20)保证，不会串到别的设置行。
+    if (off < -120 || off > 1400) return;
     if (!cell || el.children.length < cell.children.length) cell = el;
   });
   if (!cell) return {err: 'no-cell', want: String(want)};
@@ -210,7 +214,11 @@ JS_ROW_CELL = wrap(r"""((spec) => {
     // ⚠ 刻度条**从左边缘起就与行标签水平重叠**（时长条第 1 格 x=142 < 标签右边缘 165），
     //   所以这里只能相对 lab.x 放宽，不能要求"在标签右侧"；上界 460 用来排除右栏。
     const off = r.x - lab.x;
-    if (off < -20 || off > 460) return;
+    // ★ 2026-10-15：偏移窗口由 -20..460 放宽到 -120..1400 ——
+    //   时长「15」在轮播里常位于 +460 之外 ⇒ 原窗口永远找不到它，
+    //   表现为 ABORT_SETTINGS（时长 试了 8 轮仍未把第 15 格滚进可视区）。
+    //   行对齐仍由上面的 y 容差(±20)保证，不会串到别的设置行。
+    if (off < -120 || off > 1400) return;
     cands.push({el, r});
   });
   if (!cands.length) return {err: 'no-cell', want: String(want)};
@@ -295,7 +303,9 @@ JS_PICK_OPTION = r"""((spec) => {
     const r = el.getBoundingClientRect();
     if (r.width < 8 || r.height < 6) return;
     const cx = r.x + r.width / 2, cyy = r.y + r.height / 2;
-    if (Math.abs(cx - nx) > 280) return;
+    // ★ 2026-10-15：x 窗口由 280 放宽到 700 —— 本机 1050×699 视口下，
+    //   宽高比下拉的选项会渲染到离触发器较远的位置，280 会全部被过滤 ⇒ 报「下拉里找不到选项」。
+    if (Math.abs(cx - nx) > 700) return;
     o.push({x: cx, y: cyy, d: Math.abs(cyy - ny)});
   });
   if (!o.length) return null;
