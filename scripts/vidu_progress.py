@@ -88,11 +88,17 @@ def main() -> int:
             missing.append(g)
             continue
         ts.sort(key=lambda x: x.get("created_at") or "", reverse=True)
+        # ★★ 2026-10-15 修：**先找"最新的那个带无水印地址的 success"**，找到就算已出片。
+        #   不能直接取最新一条判状态 —— 同一组可能被提交过多轮（重投/合规改写），
+        #   最新那条可能是 failed，但**前面已经有一条 success 且能下载**（实测 1_2_标准 就是
+        #   两条 success + 一条 failed，旧写法把它误报成"失败"，白重投一轮）。
+        wins = [t for t in ts if t.get("state") == "success" and has_url(t)]
+        if wins:
+            ok.append(g)
+            continue
         t = ts[0]
         st = t.get("state")
-        if st == "success" and has_url(t):
-            ok.append(g)
-        elif st == "failed":
+        if st == "failed":
             failed.append((g, t.get("err_code") or "", t.get("created_at") or ""))
         else:
             queued.append((g, st))
