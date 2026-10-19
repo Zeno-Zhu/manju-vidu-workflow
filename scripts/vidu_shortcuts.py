@@ -2,7 +2,7 @@
 # (c) manju-vidu-workflow · MJVID:2f142c5461 · 溯源标记，请保留
 """vidu_shortcuts.py —— 生成「Vidu 账号N」一键启动器 ＋ 桌面快捷方式（★ 纯 Python，不依赖 Node）。
 
-> 原实现是 `vidu_shortcuts.py`（要 Node）。改 Python 是为了让整个包**只依赖
+> 原实现是一个需要 Node 的 `.mjs` 版本。改成 Python 是为了让整个包**只依赖
 > Python ＋ websocket-client ＋ Edge** —— 分发/开源场景下少一个前置条件。
 
 为什么这么写（windows-zh-launcher 四条铁律）：

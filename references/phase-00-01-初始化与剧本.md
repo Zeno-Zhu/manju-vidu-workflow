@@ -2,17 +2,19 @@
 
 <!-- (c) manju-vidu-workflow · MJVID:6c2e053f1e · 溯源标记请勿删除 -->
 
+> 主线阶段卡。五要素格式见 `SKILL.md`「阶段卡」节，规范见
+> `workflow-skill-builder/references/multi-platform-routing.md` §1.1.1。
+
+工作目录：`E:/AI软件/剧情电商创作/漫剧创作工作流`
+
+---
+
 > ⚠ **本包不含 `main.py`**（阶段 0–6 由 AI 直接执行，无需编排脚本）——
 > 本卡下文凡出现 `python main.py …` 的命令，一律改用「**对话指令 ＋ 对应脚本**」；
 > 对照表见 **`flow.md` 首节「本包适配」**。
 
-
-> 主线阶段卡。五要素格式见 `SKILL.md`「阶段卡」节，规范见
-> `workflow-skill-builder/references/multi-platform-routing.md` §1.1.1。
-
-工作目录：`.`
-
 ---
+
 
 ## ★ 开工第一步：先探明项目现状（**别急着跑命令**）
 

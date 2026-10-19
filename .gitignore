@@ -29,3 +29,8 @@ desktop.ini
 # ---- 本地私有适配（每个人自己的，不该进仓库）----
 user-adapters/
 *.local.md
+
+# ---- 密钥：绝不进仓库 ----
+.env
+.env.*
+!.env.example

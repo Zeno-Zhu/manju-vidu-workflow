@@ -1,0 +1,43 @@
+manju-vidu-workflow  VERSION
+====================
+
+版本日期：2026-10-20
+主线对标：manju-vidu（skills 目录）2026-10-19
+同步来源：manju-creation/references、漫剧创作工作流/prompts、漫剧创作工作流/tools
+
+本版相对 2026-10-19 的变化（★ 通道切换 + 激活码）
+--------------------------------------------------
+[新增] scripts/vidu_cli.py        ★ Token 直连通道（新的默认出片方式）
+[新增] scripts/license.py         激活码校验（默认母码 laozhu，离线校验）
+[新增] .env.example               Token 配置模板（★ 包内不含任何真实 key）
+[切换] 出片默认路径：网页自动化 → **CLI 直连**（vidu_edge.py 保留为兜底，降级）
+[说明] 官方 vidu-cli 的 --schedule-mode 只认 claw_pass|normal，提交不了 nopeak；
+       故 vidu_cli.py 直接打底层 API，闲时 0 积分照常可用
+[门禁] vidu_cli / vidu_api / vidu_queue / vidu_image 入口接入激活校验
+[修正] README / SKILL / INIT 的通道口径与上手步骤（不再要求先登录浏览器）
+
+本版相对 2026-10-15 的变化
+--------------------------
+[新增工具] scripts/vidu_check_prompts.py     提示词结构门 A–I（台词逐字多重集）
+[新增工具] scripts/vidu_make_jobs.py         作业单 jobs_vidu.json 生成器（参数化）
+[新增工具] scripts/vidu_prepare.py           别家作业单 → 本渠道参数文件
+[新增工具] scripts/vidu_snapshot.py          页面可交互元素快照（只读）
+[新增工具] scripts/rewrite_shots_jimeng.py   只换镜头行的确定性改写器
+[修 bug]  vidu_image.py  pagesz 10 → 5（pagesz=10 返回 0 条，表现为 600s 超时"卡死"）
+[同步]    references/ 全部 phase-* / 制式-* / flow 对齐主线（含 2026-10-15/10-18 资产阶段大修）
+[同步]    references/vidu-平台机制.md 补齐 §17 补1/2/3、§18 合规改写、进度盘点
+[同步]    prompts/5.1 补 66 行、提示词最小改造准则 补 11 行
+[补件]    prompts/即梦20固定提示词结尾.txt（作业单硬依赖）
+[补件]    prompts/5.0-分镜组共用底座.md、prompts/即梦20镜头写作避坑.md
+[修正]    包内引用断链 5 → 0
+
+结构
+----
+SKILL.md         入口（流程 + 去哪读）
+README.md        给人看的速览（安装 / 怎么开始 / 更新日志）
+INIT.md          首次使用：环境初始化
+references/      阶段卡 + 方法论（制式 / 镜头语言 / 平台机制）
+prompts/         提示词规范（按需读取）
+scripts/         Vidu 工具链（提交 / 下载 / 主体库 / 闲时队列 / 体检门 / 作业单生成）
+assets/技能面板/  自己人版配套技能参考图
+protected/       诱饵说明（core.enc 是诱饵，不是加密核心）

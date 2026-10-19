@@ -2,11 +2,6 @@
 
 <!-- (c) manju-vidu-workflow · MJVID:9fa07154a1 · 溯源标记请勿删除 -->
 
-> ⚠ **本包不含 `main.py`**（阶段 0–6 由 AI 直接执行，无需编排脚本）——
-> 本卡下文凡出现 `python main.py …` 的命令，一律改用「**对话指令 ＋ 对应脚本**」；
-> 对照表见 **`flow.md` 首节「本包适配」**。
-
-
 > 主线阶段卡。把成片汇成**每集素材清单**，最后**打包交付**。
 > 这两步**与渠道无关** —— 换渠道**不重跑**。
 >
@@ -20,6 +15,13 @@
 > 直接 `--step 8.x` 会被拒。
 
 ---
+
+> ⚠ **本包不含 `main.py`**（阶段 0–6 由 AI 直接执行，无需编排脚本）——
+> 本卡下文凡出现 `python main.py …` 的命令，一律改用「**对话指令 ＋ 对应脚本**」；
+> 对照表见 **`flow.md` 首节「本包适配」**。
+
+---
+
 
 ## Phase 9｜分集工程
 
@@ -55,7 +57,7 @@ python main.py run --project "<项目名>" --step 9.1      # ★ 默认只跑 9.
 > `h3_batch_all.py` 只写自己的 `_出片记录/任务台账.json`，**不往 `产物清单.json` 登记 video 节点**；
 > 而 `step_10.run_10_2` 靠 `registry.list_by_type("video")` 收集成片。
 > ⇒ **必须先桥接登记**，否则交付包里**一个视频都没有** —— 而且 `10.2` 只报 `count: 0`、**不报错**，极易漏掉。
-> 做法：`python ./_p9_register_videos.py "<项目目录>" --apply`
+> 做法：`python _p9_register_videos.py "<项目目录>" --apply`
 > （扫 `02_分集工程/EPxx/视频/*.mp4` → `registry.upsert("video", 组号, status="completed", output_files=[绝对路径])`；
 > 自动备份 `产物清单.json` 为 `.bak_prevideo`）
 

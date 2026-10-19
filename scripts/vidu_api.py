@@ -460,6 +460,11 @@ def cmd_raw(a):
 
 
 def main():
+    import os as _os, sys as _sys
+    _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+    from license import ensure_activated
+    if not ensure_activated():
+        return 3
     ap = argparse.ArgumentParser(description="Vidu 直连提交（不点 UI）")
     ap.add_argument("--port", type=int, default=9222)
     sub = ap.add_subparsers(dest="cmd", required=True)

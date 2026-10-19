@@ -94,7 +94,7 @@ git pull
      → 写「自己人版」提示词 → 体检 → Vidu 出片 → 下载归档
 ```
 
-- **渠道**：Vidu（网页平台，脚本自动驱动浏览器，不用手点）
+- **渠道**：Vidu（**Token 直连，默认 CLI 模式**；网页自动化保留为兜底）
 - **提示词**：只带**自己人**一套（镜头调度权交给模型，写"讲戏"式说明书）。
   自己人把中间镜头全交给模型，所以「首镜 / 末镜」必须写死 ——
   **同一套制式跨渠道复用时，边界只钉在两头**。
@@ -102,23 +102,40 @@ git pull
 
 ---
 
+## 激活（首次一次）
+
+本包需要激活码。**默认激活码：`laozhu`**
+
+```bash
+python scripts/license.py activate --code laozhu
+python scripts/license.py status          # 看是否已激活
+```
+
+激活状态存在 `~/.manju-vidu/activation.json`，之后不用再输。
+
+---
+
 ## 三步开始
 
 ### 1. 装环境（只做一次）
 
-双击或命令行跑：
-
 ```bash
-# 看你的 Python 在哪（通常在）
-python --version
-
-# 装唯一一个依赖
+# 装唯一一个依赖（只有兜底的网页模式才用到；纯 CLI 模式不依赖它）
 python -m pip install websocket-client
 ```
 
-然后在浏览器里**登录一次 Vidu**（`https://www.vidu.cn`），脚本会复用这个登录态。
+然后配置 Token：
 
-> 详细步骤（含 Edge 启动、登录态检查）见 **`INIT.md`**。
+```bash
+# 把 .env.example 复制成 .env，填入你自己的 Token
+copy .env.example .env
+# 编辑 .env → VIDU_TOKEN=vda_xxxxxxxx
+```
+
+Token 获取：https://www.vidu.cn → 个人中心 → API Token（`vda_` 开头）。
+
+> ★ **不再需要在浏览器里登录 Vidu**。只要 Token 有效，`scripts/vidu_cli.py` 就能直接出片。
+> 只有想退回网页自动化时，才需要 `INIT.md` 里的 Edge 登录流程。
 
 ### 2. 找 AI 说暗号
 
@@ -427,3 +444,51 @@ python scripts/vidu_progress.py --jobs <项目>/00_剧本与提示词/视频提�
   传成北京时刻 ⇒ 整批判「台账里没有该组」，下载 0 条（`--dry-run` 一跑就能看出来）。
 - ★★ **闲时额度必须先查再用**：`vidu_api.py quota` / `vidu_queue.py status` 都能读到权威值；
   分配提交任务时**按剩余额度比例分**，额度为 0 的账号先剔除，⛔ 不要平均分。
+
+---
+
+## 2026-10-19 更新
+
+### ★ 新增 5 个工具（全部参数化，不再写死路径）
+
+```bash
+# ① 写完提示词先体检（9 类断言，含台词逐字核对）
+python scripts/vidu_check_prompts.py --project "<你的项目目录>"
+
+# ② 不想手搓作业单：从提示词 + 资产目录直接生成 jobs_vidu.json
+python scripts/vidu_make_jobs.py --project "<你的项目目录>"
+
+# ③ 已有别家的作业单，要换成 Vidu 参数
+python scripts/vidu_prepare.py --jobs <作业单.json> --spec <分镜组规格.json> --asset-dir <资产图目录> ...
+
+# ④ 页面改版 / 定位失效：抓一份元素快照（只读）
+python scripts/vidu_snapshot.py --port 9222 --out <快照.json>
+
+# ⑤ 提示词"镜头太死板"：只换镜头行，台词一个字都不许动
+python scripts/rewrite_shots_jimeng.py --src <提示词> --patch <补丁.json> [--apply]
+```
+
+> ★ **换项目一定要带 `--project`**（不带会用默认路径并提示"文件不存在"）。
+> 不知道参数就 `--help`。
+
+### ★ 修掉一个会让"出图"看起来卡死的坑
+
+`vidu_image.py` 查任务原来用 `pagesz=10` —— 实测**直接返回 0 条**，
+表现为**卡住不动直到 600 秒超时，但图其实早就出好了**。已改为 `pagesz=5&page=1`。
+
+### ★ 补齐 3 份提示词（其中 1 份是硬依赖）
+
+- `prompts/即梦20固定提示词结尾.txt` —— 作业单拼提示词时**必须**用到（之前引用了但没带这个文件）；
+- `prompts/5.0-分镜组共用底座.md` —— 5.1/5.2/5.3 的**共同前提**（时长策略 / 容量上限 / TSV 规范 / 锚点规则）；
+- `prompts/即梦20镜头写作避坑.md` —— 镜头写作实操避坑。
+
+### ★ 判"出没出片"的三条纪律（省额度）
+
+1. 先找**成功任务**，不要直接看最新一条；
+2. 平台台账**有滞后** —— 判"失败"前留足入账时间，否则会把已成功的组当失败**重投**；
+3. 判"提交成功"认 `task.id`，**不要认历史列表**。
+
+### ★ 包内引用 0 断链
+
+以前文档里会指到本包**并不包含**的稿子（H3 / 即梦25标准 / 标准模板 / 通用底座），
+现在统一标注「**本包不含**」，不会再让你顺着假路径去翻不存在的文件。

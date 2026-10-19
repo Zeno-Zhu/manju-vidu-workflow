@@ -145,7 +145,12 @@ JS = r"""(async (spec) => {
   }
 
   if (spec.op === 'poll') {
-    const r = await fetch(S + '/vidu/v1/tasks/history/me?pager.pagesz=10&scene_mode=none&types='
+    // ★★★ 2026-10-15 实测修正：**必须 `pagesz=5`**。
+    //   这里原来写的是 `pagesz=10` —— 实测 pagesz=10/50 直接返回 **0 条任务**
+    //   （pagesz=5 才返回最新一批）⇒ 轮询永远找不到自己刚建的任务，
+    //   表现为"脚本卡住不动、一直到 600s 超时"，但**图其实已经在平台侧生成好了**。
+    //   台账规矩见 vidu_tasks.py 顶部注释（pagesz 决定的是"取哪一段"，不是"每页几条"）。
+    const r = await fetch(S + '/vidu/v1/tasks/history/me?pager.pagesz=5&pager.page=1&scene_mode=none&types='
                           + spec.kind, {headers:H, credentials:'include'});
     const p = await jp(r); if (p.err) { out.error = p.err; return out; }
     const t = (p.j.tasks || []).find(x => x.id === spec.task_id) || (p.j.tasks || [])[0];
@@ -324,6 +329,11 @@ def read_prompts(args):
 
 
 def main():
+    import os as _os, sys as _sys
+    _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+    from license import ensure_activated
+    if not ensure_activated():
+        return 3
     ap = argparse.ArgumentParser(description="Vidu 出图（文生图 / 参考图生图）")
     ap.add_argument("cmd", choices=["t2i", "r2i", "models"])
     ap.add_argument("--prompt", default="")

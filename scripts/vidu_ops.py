@@ -6,7 +6,7 @@
 提交在 `vidu_submit.py`，mention 在 `vidu_mentions.py`。
 
 ★ 定位的四个坑（整页误命中历史卡片 / 编辑器徽标几何溢出 / 顶层 const 污染 /
-  时长条第 1–8 格在标签左侧）在 `references/vidu-平台机制.md` §4，改本文件前先读。
+  时长条第 1–8 格在标签左侧）在 `references/平台机制.md` §4，改本文件前先读。
 """
 from __future__ import annotations
 

@@ -313,6 +313,11 @@ def cmd_mark(a):
 
 
 def main():
+    import os as _os, sys as _sys
+    _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+    from license import ensure_activated
+    if not ensure_activated():
+        return 3
     ap = argparse.ArgumentParser(description="Vidu 闲时额度队列调度器")
     ap.add_argument("--port", type=int, default=9222)
     ap.add_argument("--state", default="", help="队列文件路径（默认 <项目>/_出片记录/_vidu_queue.json）")

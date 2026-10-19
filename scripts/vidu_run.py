@@ -23,7 +23,7 @@
 
 ═══ 平台机制 ═══
   全部硬事实（页面渲染 / 上传 / mention / 设置区 / 定位坑 / 提交确认）见
-  **`references/vidu-平台机制.md`**；浏览器与登录态见 `INIT.md`。
+  **`references/平台机制.md`**；浏览器与登录态见 `INIT.md`。
 """
 from __future__ import annotations
 

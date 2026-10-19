@@ -2,7 +2,25 @@
 
 <!-- (c) manju-vidu-workflow · MJVID:f3bd2edf68 · 溯源标记请勿删除 -->
 
-## ★★ 最优先：双击 `1-初始化环境.cmd` 就完事了
+## ★ 先做两件事（CLI 模式，2 分钟）
+
+```bash
+# 1) 激活（默认码 laozhu，一次就好）
+python scripts/license.py activate --code laozhu
+
+# 2) 配 Token：复制 .env.example 为 .env，填入 VIDU_TOKEN=vda_...
+```
+
+Token 获取：https://www.vidu.cn → 个人中心 → API Token。
+
+完成后 `python scripts/vidu_cli.py quota` 能看到闲时额度，就可以直接出片了 —— **不需要浏览器**。
+
+> 下面这套 Edge 流程是**网页自动化的兜底方案**，只有 Token 失效 / 平台改协议 /
+> 想肉眼看表单时才需要走。
+
+---
+
+## ★★ 兜底：双击 `1-初始化环境.cmd` 就完事了
 
 它自动做完下面全部工作，**不需要用户敲任何命令**：
 

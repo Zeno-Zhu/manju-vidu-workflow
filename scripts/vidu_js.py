@@ -12,7 +12,7 @@
   · mention     JS_COLLECT_MENTIONS / JS_SET_BLOCKS
   · 提交        JS_SUBMIT
 
-★ 改这些片段前先读 `references/vidu-平台机制.md` §3/§4（定位四坑）。
+★ 改这些片段前先读 `references/平台机制.md` §3/§4（定位四坑）。
 """
 from __future__ import annotations
 
