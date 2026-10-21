@@ -303,6 +303,36 @@ python scripts/vidu_make_jobs.py --project "<项目目录>"
 
 **什么时候用**：Phase 3–4 要生的资产**用户没有** ⇒ 直接用 Vidu 出图（同平台、同登录态）。
 
+#### ★ 首选：`vidu_cli.py image`（Token 直连，**不用浏览器**）
+
+```bash
+# 文生图 t2i（资产四件套初稿）
+python scripts/vidu_cli.py image --prompt "一位50多岁中国女性的角色设定板，正面与侧面双视角，中性灰背景" \
+        --model pro --ratio 16:9 --name "张桂兰_设定版" --out "<项目>/01_资产库/图片"
+# 参考图生图 r2i（基准图 → 设定版 / 换场景、换姿态）
+python scripts/vidu_cli.py image --prompt "保持人物外貌与服装不变，让她坐在窗边看旧相册" \
+        --ref "<项目>/01_资产库/角色基准图/张桂兰.png" --model pro --out "<项目>/01_资产库/图片"
+# 批量（每行一条；`标题||正文` 指定文件名）+ 先看报价
+python scripts/vidu_cli.py image --prompt-file "<项目>/资产提示词.txt" --model fast \
+        --out "<项目>/01_资产库/图片" --dry-run
+```
+
+| 参数 | 说明 |
+|---|---|
+| `--prompt` / `--prompt-file` | 单条 / 批量（`标题||正文` 可指定文件名） |
+| `--ref`（可多次） | **给了就是 r2i**；每张参考图脚本会自动上传两次（`content` + `src_imgs`） |
+| `--model` | `fast` / `pro` / `base`，或直接写 `model_version` |
+| `--mode` | ★ **默认 `normal`（花积分，6 积分/张）**；`nopeak` 只有 t2i 能用，**r2i 传 nopeak 平台直接 403** |
+| `--count` / `--name` / `--out` | 同批张数 / 文件名 / 输出目录 |
+
+- ★ **默认走积分是刻意的**：`reference2image` 平台不允许闲时；`text2image` 虽然能 `nopeak`（0 积分），
+  但**生图与出片共用同一个「闲时 200 条/天」计数器**，批量资产会把当天的出片额度吃掉，所以不默认开。
+- ★ 提交前会打 `预计 N 积分（余额 M）`；`--dry-run` 只报价不提交。
+- ★ 下载同样只认 `download_uri` / `nomark_uri`；只有 `uri` 时判为中间态、稍后重跑同一条命令即可。
+- ⚠ 出图**也是 task**：state ≠ `success` 就别下结论；`ActivityError` 多为平台侧瞬时失败，换条提示词/重跑一次再判。
+
+#### 兜底：`vidu_image.py`（网页自动化，Token 失效或要看表单时）
+
 ```bash
 # 文生图（资产四件套的正文图）
 python scripts/vidu_image.py t2i --prompt "一位年轻女性的角色设定板，正面与侧面多视角，中性灰背景" \
@@ -420,7 +450,8 @@ node   scripts/vidu_shortcuts.py --account-index 1   # 桌面「Vidu 账号1 - �
 | `跑闲时` / `批量出片`          | 起闲时队列调度器（§5.2）                                              |
 | `建主体库` / `清主体库`         | 主体库批量建 / 删（§5.3，带剧名标签）                                      |
 | `下载` / `收尾`             | 每日收尾（§5.4）：下载 + 重命名 + 日报                                    |
-| **`生成资产图 <描述>`**        | 调 `vidu_image.py` 出图（§5.6）—— 文生图 `t2i` / 参考图生图 `r2i`        |
+| **`生成资产图 <描述>`**        | 调 `vidu_cli.py image` 出图（§5.6）—— 文生图 `--prompt` / 参考图生图 `--ref`，**默认花积分** |
+| **`用网页出图 <描述>`**        | 兜底走 `vidu_image.py t2i/r2i`（需 Edge 实例）                              |
 | **`整理资产`**              | 客户目录归位（`scripts/organize_assets.py`，**先出方案**，确认后 `--apply`） |
 | **`只上传 <提示词文件>`**       | 走 §5.7 **仅上传模式**：客户自有提示词原样提交，只帮挂资产                          |
 | **`开账号N`** / `关账号N`     | 起/关第 N 个账号实例（§5.9）；`账号列表` 看全部                               |

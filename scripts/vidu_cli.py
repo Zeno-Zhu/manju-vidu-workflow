@@ -27,6 +27,9 @@ Vidu 渠道 · CLI / Token 直连模式（★ 默认通道）
   py scripts/vidu_cli.py raw   --prompt-file 我的提示词.txt --image a.png --image b.png
   py scripts/vidu_cli.py pull  --jobs <项目>/jobs_vidu.json [--out <目录>]
   py scripts/vidu_cli.py accounts
+  py scripts/vidu_cli.py image --prompt "…" --model pro --out <目录>            # 文生图 t2i
+  py scripts/vidu_cli.py image --prompt "…" --ref 基准图.png --out <目录>       # 参考图生图 r2i
+  ★ 生图默认 --mode normal（6 积分/张）；nopeak 仅 t2i 可用，r2i 传 nopeak 平台直接 403
 """
 from __future__ import annotations
 
@@ -48,6 +51,9 @@ from license import ensure_activated  # noqa: E402
 DEFAULT_BASE = "https://service.vidu.cn"
 INFLIGHT = ("created", "preparation", "processing")
 DONE = ("success", "failed", "error")
+
+# 生图模型别名（与 vidu_image.py 一致）
+IMG_MODELS = {"fast": "3.2_image_2_5_fast", "pro": "3.2_image_2_5_pro", "base": "3.2_image_2"}
 
 
 # ─────────────────────── .env ───────────────────────
@@ -352,6 +358,157 @@ def cmd_raw(a):
     return 0
 
 
+# ─────────────────────── 生图（t2i / r2i） ───────────────────────
+def _wh(path):
+    o = Vidu._probe(path, "stream=width,height").replace(",", "x").split("x")
+    try:
+        return int(o[0]), int(o[1])
+    except Exception:
+        return 1024, 1024
+
+
+def build_image_payload(job, cli, mode, upcache):
+    """无 ref ⇒ text2image；有 ref ⇒ reference2image。
+
+    ★ r2i 的每张参考图要**上传两次**：`content`（裁剪图）+ `src_imgs[0]`（原图），
+      两个必须是**不同的 upload id**（实测：复用同一个 id 会丢参考）。
+    """
+    refs = job.get("refs") or []
+    mv = IMG_MODELS.get(job.get("model") or "pro", job.get("model") or "3.2_image_2_5_pro")
+    settings = {
+        "duration": 0,
+        "resolution": job.get("resolution") or "1080p",
+        "aspect_ratio": job.get("ratio") or "16:9",
+        "sample_count": int(job.get("count") or 1),
+        "movement_amplitude": "auto",
+        "schedule_mode": mode,
+        "model_version": mv,
+        "use_trial": False,
+        "image_count": max(1, len(refs)),
+        "codec": "h265",
+    }
+    prompts = [{"type": "text", "content": job["prompt"]}]
+    for i, p in enumerate(refs, 1):
+        a = _up(cli, p, "image", upcache)      # 裁剪图（走缓存）
+        b = cli.upload(p, "image")             # 原图（★ 不复用缓存，必须另一个 id）
+        w, h = _wh(p)
+        prompts.append({"type": "image", "content": a, "src_imgs": [b],
+                        "selected_region": {"top_left": {"x": 0, "y": 0},
+                                            "bottom_right": {"x": w, "y": h}},
+                        "name": "图%d" % i})
+    return {"type": "reference2image" if refs else "text2image",
+            "input": {"prompts": prompts, "editor_mode": "normal", "enhance": True},
+            "settings": settings}
+
+
+def quote_image(cli, payload):
+    s = payload["settings"]
+    q = ("/vidu/v1/tasks/credits?type=%s&settings.duration=0&settings.resolution=%s"
+         "&settings.aspect_ratio=%s&settings.model_version=%s&settings.schedule_mode=%s"
+         "&settings.sample_count=%d&settings.image_count=%d"
+         % (payload["type"], s["resolution"], s["aspect_ratio"], s["model_version"],
+            s["schedule_mode"], s["sample_count"], s["image_count"]))
+    c, j = cli.jget(q)
+    return j if isinstance(j, dict) else {}
+
+
+def safe_name(s, n=40):
+    s = "".join(ch for ch in (s or "image") if ch not in '\\/:*?"<>|\r\n\t').strip()
+    return (s[:n] or "image")
+
+
+def cmd_image(a):
+    cli = Vidu(account=a.account)
+    items = []
+    if a.prompt:
+        items.append((a.name or "", a.prompt))
+    if a.prompt_file:
+        with open(a.prompt_file, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "||" in line:
+                    t, body = line.split("||", 1)
+                    items.append((t.strip(), body.strip()))
+                else:
+                    items.append(("", line))
+    if not items:
+        print("没给提示词：用 --prompt 或 --prompt-file")
+        return 1
+
+    mode = a.mode
+    if a.ref and mode == "nopeak":
+        print("⚠ 参考图生图不支持闲时（平台报 reference2image nopeak mode is not allowed）"
+              "⇒ 本条强制走 normal")
+        mode = "normal"
+
+    os.makedirs(a.out, exist_ok=True)
+    cache, ok, fail = {}, 0, 0
+    for idx, (nm, text) in enumerate(items, 1):
+        job = {"prompt": text, "refs": a.ref, "model": a.model, "ratio": a.ratio,
+               "resolution": a.resolution, "count": a.count}
+        try:
+            payload = build_image_payload(job, cli, mode, cache)
+        except Exception as e:
+            print("[%d/%d] ✗ 组装失败：%s" % (idx, len(items), e))
+            fail += 1
+            continue
+        q = quote_image(cli, payload)
+        cost, left = q.get("cost_credits"), q.get("current_credits")
+        tag = "%s/%s" % (payload["type"], payload["settings"]["model_version"])
+        if a.dry_run:
+            print("[dry] %-16s %-24s %s 积分（余额 %s）｜%s"
+                  % (nm or "image", tag, cost, left, text[:36]))
+            continue
+        print("[%d/%d] %-16s %-24s 预计 %s 积分（余额 %s）"
+              % (idx, len(items), nm or "image", tag, cost, left), flush=True)
+        try:
+            r = cli.submit(payload)
+        except Exception as e:
+            print("      ✗ 提交失败：%s" % e)
+            fail += 1
+            continue
+        tid = str(r.get("id"))
+        print("      task_id = %s" % tid, flush=True)
+
+        st, waited = "created", 0
+        while waited < a.timeout:
+            st = (cli.task(tid) or {}).get("state") or st
+            if st in DONE:
+                break
+            time.sleep(a.interval)
+            waited += a.interval
+        if st != "success":
+            print("      ✗ %s（%s）" % (st, (cli.task(tid) or {}).get("err_code") or ""))
+            fail += 1
+            continue
+
+        cs = cli.creations(tid)
+        got = 0
+        for i, c in enumerate(cs):
+            url = next((str(c[k]) for k in ("download_uri", "nomark_uri") if c.get(k)), None)
+            if not url:      # ★ 只有 uri = 带水印中间态 ⇒ 不下
+                continue
+            base = safe_name(nm or text)
+            name = base + (".png" if len(cs) == 1 else "_%d.png" % (i + 1))
+            dest = os.path.join(a.out, name)
+            cli.download(url, dest)
+            got += 1
+            print("      ✅ %s（%.1f MB）" % (dest, os.path.getsize(dest) / 1048576))
+        if got:
+            ok += 1
+        else:
+            print("      ⚠ success 但拿不到无水印地址（中间态）⇒ 稍后重跑同一命令即可")
+            fail += 1
+
+    if a.dry_run:
+        print("\n[dry] 共 %d 条，未提交" % len(items))
+        return 0
+    print("\n出图成功 %d｜失败 %d" % (ok, fail))
+    return 0 if not fail else 1
+
+
 def cmd_pull(a):
     cli = Vidu(account=a.account)
     led = {}
@@ -430,6 +587,23 @@ def main():
     p.add_argument("--task", default="")
     p.add_argument("--out", default="")
     p.set_defaults(fn=cmd_pull)
+
+    p = sub.add_parser("image", help="生图：文生图 t2i / 参考图生图 r2i（默认花积分）")
+    p.add_argument("--prompt", default="", help="提示词（单条）")
+    p.add_argument("--prompt-file", default="", help="批量：每行一条；『标题||正文』可指定文件名")
+    p.add_argument("--ref", action="append", default=[], help="参考图（可多次；给了就是 r2i）")
+    p.add_argument("--model", default="pro", help="fast / pro / base，或直接给 model_version")
+    p.add_argument("--ratio", default="16:9")
+    p.add_argument("--resolution", default="1080p")
+    p.add_argument("--count", type=int, default=1, help="同一次出几张（sample_count）")
+    p.add_argument("--out", default=".", help="输出目录")
+    p.add_argument("--name", default="", help="单条时的文件名（不带扩展名）")
+    p.add_argument("--mode", choices=["normal", "nopeak"], default="normal",
+                   help="★ 默认 normal（花积分）；nopeak 仅 t2i 可用，r2i 会被平台 403")
+    p.add_argument("--interval", type=float, default=5.0)
+    p.add_argument("--timeout", type=int, default=900)
+    p.add_argument("--dry-run", action="store_true")
+    p.set_defaults(fn=cmd_image)
 
     a = ap.parse_args()
     return a.fn(a)

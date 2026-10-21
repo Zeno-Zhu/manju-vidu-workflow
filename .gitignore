@@ -34,3 +34,6 @@ user-adapters/
 .env
 .env.*
 !.env.example
+
+# ---- WorkBuddy 会话记忆 / 自动化（本机私有，不进仓库）----
+.workbuddy/
