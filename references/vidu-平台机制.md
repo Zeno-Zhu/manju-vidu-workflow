@@ -808,3 +808,42 @@ vidu_queue.py run --jobs <jobs_vidu.json>
 2. `vidu_run.py` 的 `SUBMITTED` 只当"动作已执行"，⛔ **不要当成"平台已受理"**；
 3. 判"某组到底出没出片"用 **`task_id` ＋（滞后但最终会到的）历史列表** 两头对；
 4. 顺带：`vidu_api.py run` 自带**闲时额度门禁**（提交前先查够不够），比 UI 路径多一层保护。
+
+---
+
+# ★ 闲时（nopeak）能力边界 —— 2026-10-21 实测补齐
+
+> 背景：曾按「`nopeak` + 音频 403」推断「闲时不出声、声音要单独做」。**实测证明这个结论是错的**，
+> 403 只针对「参考音频驱动的口型对齐」，不针对台词配音。
+
+## A. 视频：闲时会出声
+
+| 探测 | 结果 |
+|---|---|
+| `nopeak` + `with_audio=true` | ❌ 403 `withaudio & lipsync nopeak mode is not allowed` |
+| `nopeak` + `lip_sync=true` | ❌ 403 同上 |
+| `normal` + 两者都开 | ✅ 建单 |
+
+- 但**不传这两个字段时，成片自带 AAC 48k 音轨，且 `{台词}` 会被完整念出来**
+  （5 组 15s 成片逐条 ASR 核对：台词一字不差、顺序正确；无台词处正好静音）。
+- ⇒ **`nopeak` = 0 积分 + 画面 + AI 配音台词 + 环境音效**；不能做的是「锁指定音色」「强制口型对齐」。
+- ⇒ 推论：`vidu_cli.py` / `vidu_queue.py` **不传 `with_audio` 是对的**，不要"补"这个字段（会 403）。
+
+## B. 生图：`text2image` 能闲时，`reference2image` 不行
+
+| 类型 | `nopeak` | `normal` |
+|---|---|---|
+| `text2image` | ✅ 放行，报价 `cost_credits: 0`（实测 0 积分、2k 也 0） | 1080p 6 / 2k 12 / 4k 21 |
+| `reference2image` | ❌ 403 `reference2image nopeak mode is not allowed` | ✅ 同上 |
+
+- ★ **生图与出片共用同一个「闲时 200 条/天」计数器**（实测 used 22 → 23）⇒
+  一批 20 张图会吃掉当天 10% 的出片额度，⛔ 批量资产不要默认走闲时。
+- r2i 的报文硬要求：每张参考图**上传两次**（`content`＝裁剪图、`src_imgs=[原图]`，
+  **两个 upload id 不能复用**）＋ `selected_region`；settings 必须 `duration: 0`。
+
+## C. 内容审核：人名会直接拦
+
+- `400 AuditSubmitIllegal / content flagged by moderation`，`metadata.content_type = "text"`。
+- 实测角色名「李强」**单独一句**（`医院病房里，李强坐在床边。`）就 400；换成别的名字立刻通过。
+  ⇒ **报这个错先怀疑人名/敏感词**，不是写法、不是 `@` 绑定、不是图片。
+- ⛔ 不要原样重投（会一直拦）；走「合规改写」再投。

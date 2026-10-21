@@ -520,6 +520,9 @@ node   scripts/vidu_shortcuts.py --account-index 1   # 桌面「Vidu 账号1 - �
 | 多账号端口撞车               | 账号名要**带数字**（`账号2`）；快捷方式用 `--account-index N`（§5.9）                                                            |
 | 快捷方式双击没反应             | `.cmd` 是**纯 ASCII**，中文名走 `--account-index`；看窗口里的报错路径是否存在                                                      |
 | 上传报 `Failed to fetch` | 上传 metadata **字段名写错**（图片 `image-height/width`、音频 **`duration`**）                                              |
+| **提交报 `400 AuditSubmitIllegal`** | ★ **先怀疑人名 / 敏感词** —— 实测角色名「李强」单独一句就 400，换个名字立刻过；换名或改写后再投，⛔ 别原样重投                |
+| **闲时成片"没声音"** | ★ 先确认是不是真没声：`nopeak` **仍会生成 AI 配音台词**（`{台词}` 会被念出来），只是不允许参考音色/强制口型（传 `with_audio`/`lip_sync` 才 403） |
+| **生图被 403** | `reference2image nopeak mode is not allowed` ⇒ 参考图生图只能 `normal`（6–21 积分/张，看分辨率）                          |
 
 ### 10.1 ★ 什么时候把「创建人联系方式」交给用户
 

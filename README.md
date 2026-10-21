@@ -245,16 +245,25 @@ python scripts/vidu_queue.py run --jobs "<项目>/_vidu渠道/jobs_vidu.json"
 用户手里没有的角色 / 场景 / 道具图，**直接用 Vidu 生成**（同平台、同一个登录态）：
 
 ```bash
-# 文生图（角色设定板 / 场景 / 道具）
-python scripts/vidu_image.py t2i --prompt "…" --model pro --ratio 16:9 --out "<项目>/01_资产库/图片"
+# ★ 首选：Token 直连，不用浏览器（默认走积分，6–21 积分/张看分辨率）
+python scripts/vidu_cli.py image --prompt "…" --model pro --ratio 16:9 \
+        --name "张桂兰_设定版" --out "<项目>/01_资产库/图片"
 
-# 参考图生图（拿基准图派生设定版、换姿势场景）
+# 参考图生图（拿基准图派生设定版、换姿势场景）—— 给 --ref 就是 r2i
+python scripts/vidu_cli.py image --prompt "保持人物外貌与服装不变，…" \
+        --ref "<基准图>.png" --out "<项目>/01_资产库/图片"
+
+# 兜底：网页自动化（Token 失效 / 要看表单时）
+python scripts/vidu_image.py t2i --prompt "…" --model pro --ratio 16:9 --out "<项目>/01_资产库/图片"
 python scripts/vidu_image.py r2i --prompt "保持人物外貌与服装不变，…" \
                                --ref "<基准图>.png" --out "<项目>/01_资产库/图片"
 ```
 
 - 模型：`fast`（全能 Image 2.5 Fast）/ **`pro`**（全能 Image 2.5 Pro）/ `base`
-- ⏱ **一张约 2–3 分钟**；`--dry-run` 可先看会提交什么
+- 💰 **生图默认花积分**：`1080p 6 / 2k 12 / 4k 21 积分/张`。文生图虽然能传 `--mode nopeak`（0 积分），
+  但**生图与出片共用同一个「闲时 200 条/天」计数器**，白嫖会吃掉当天出片额度，所以不默认开；
+  **参考图生图平台根本不允许闲时**（`reference2image nopeak mode is not allowed`），传了会自动纠正。
+- ⏱ 一张约 1–2 分钟；`--dry-run` 只报价不提交，提交前也会打印「预计 N 积分（余额 M）」
 - 配套的**四个资产提示词**都在 `prompts/`：角色基准图（9:16 竖版）、角色设定版（16:9）、场景设定版、道具设定版
 
 > ⚠ 下载**只拿无水印版**（脚本已保证）：Vidu 返回两个地址，`watermarked.*` 是带"Vidu AI 生成"水印的，
